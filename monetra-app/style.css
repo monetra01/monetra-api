@@ -1,0 +1,321 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f5f7fb;
+    color: #1f2937;
+}
+
+.container {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 25px 18px 40px;
+}
+
+.topo {
+    margin-bottom: 25px;
+}
+
+.topo h1 {
+    font-size: 30px;
+    margin-bottom: 6px;
+}
+
+.topo p {
+    color: #6b7280;
+    font-size: 16px;
+}
+
+
+/* SALDO */
+
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.saldo-card {
+    margin-bottom: 18px;
+}
+
+.titulo-card {
+    color: #6b7280;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.saldo-card h2 {
+    font-size: 36px;
+    margin-bottom: 25px;
+}
+
+.resumo {
+    display: flex;
+    gap: 12px;
+}
+
+.resumo-item {
+    flex: 1;
+    padding: 14px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.resumo-item span {
+    font-size: 13px;
+}
+
+.resumo-item strong {
+    font-size: 16px;
+}
+
+.entrada {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.saida {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+
+/* BOTÃO */
+
+.btn-principal {
+    width: 100%;
+    border: none;
+    border-radius: 15px;
+    padding: 17px;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #111827;
+    color: white;
+    margin-bottom: 30px;
+}
+
+.btn-principal:hover {
+    opacity: 0.9;
+}
+
+
+/* SEÇÕES */
+
+.secao {
+    margin-bottom: 30px;
+}
+
+.titulo-secao {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.titulo-secao h2 {
+    font-size: 19px;
+}
+
+
+/* CATEGORIAS */
+
+.categoria-lista {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.04);
+}
+
+.categoria {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 17px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.categoria:last-child {
+    border-bottom: none;
+}
+
+.categoria div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.icone {
+    width: 40px;
+    height: 40px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.categoria strong {
+    font-size: 15px;
+}
+
+
+/* HISTÓRICO */
+
+.historico {
+    background: white;
+    border-radius: 18px;
+    min-height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.04);
+}
+
+.sem-transacoes {
+    text-align: center;
+    color: #9ca3af;
+}
+
+.sem-transacoes span {
+    font-size: 30px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.sem-transacoes p {
+    font-size: 14px;
+}
+/* TRANSAÇÕES */
+
+#listaTransacoes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.transacao-item {
+    background: white;
+    border-radius: 14px;
+    padding: 15px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+}
+
+.transacao-item p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.transacao-item strong {
+    font-size: 16px;
+}
+
+.transacao-item small {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.transacao-item .entrada {
+    color: #047857;
+    font-weight: bold;
+}
+
+.transacao-item .saida {
+    color: #dc2626;
+    font-weight: bold;
+}
+/* ÚLTIMAS TRANSAÇÕES */
+
+#listaTransacoes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.transacao-item {
+    display: block;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 16px;
+    box-sizing: border-box;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.transacao-item p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.transacao-item strong {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.transacao-item small {
+    display: block;
+    color: #6b7280;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.transacao-item .entrada {
+    color: #047857;
+    font-weight: bold;
+}
+
+.transacao-item .saida {
+    color: #dc2626;
+    font-weight: bold;
+}
+
+/* CORREÇÃO DEFINITIVA - ÚLTIMAS TRANSAÇÕES */
+
+#listaTransacoes {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+    margin-top: 15px !important;
+}
+
+#listaTransacoes > .transacao-item {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+    margin: 0 !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+#listaTransacoes > .transacao-item p {
+    margin: 0 !important;
+    line-height: 1.5 !important;
+}
+
+#listaTransacoes > .transacao-item strong {
+    display: block !important;
+    font-size: 16px !important;
+    margin-bottom: 5px !important;
+}
+
+#listaTransacoes > .transacao-item small {
+    display: block !important;
+    color: #6b7280 !important;
+    font-size: 13px !important;
+    margin-top: 4px !important;
+}

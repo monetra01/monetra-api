@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Monetra</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <main class="container">
+
+        <header class="topo">
+            <div>
+                <h1>🐷 Monetra</h1>
+                <p>Olá, Bruno! 👋</p>
+            </div>
+        </header>
+
+
+        <!-- SALDO -->
+        <section class="card saldo-card">
+
+            <p class="titulo-card">Saldo disponível</p>
+
+            <h2 id="saldo">R$ 0,00</h2>
+
+            <div class="resumo">
+
+                <div class="resumo-item entrada">
+                    <span>🟢 Entradas</span>
+                    <strong id="entradas">R$ 0,00</strong>
+                </div>
+
+                <div class="resumo-item saida">
+                    <span>🔴 Saídas</span>
+                    <strong id="saidas">R$ 0,00</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- NOVA TRANSAÇÃO -->
+        <button id="btnNovaTransacao" class="btn-principal">
+            + Nova transação
+        </button>
+
+
+        <!-- CATEGORIAS -->
+        <section class="secao">
+
+            <div class="titulo-secao">
+                <h2>Gastos por categoria</h2>
+            </div>
+
+            
+
+            <div class="categoria-lista">
+
+                <div class="categoria">
+                    <div>
+                        <span class="icone">🚗</span>
+                        <span>Transporte</span>
+                    </div>
+
+                    <strong id="transporte">R$ 0,00</strong>
+                </div>
+
+
+                <div class="categoria">
+                    <div>
+                        <span class="icone">🍔</span>
+                        <span>Alimentação</span>
+                    </div>
+
+                    <strong id="alimentacao">R$ 0,00</strong>
+                </div>
+
+
+                <div class="categoria">
+                    <div>
+                        <span class="icone">🏠</span>
+                        <span>Casa</span>
+                    </div>
+
+                    <strong id="casa">R$ 0,00</strong>
+                </div>
+
+
+                <div class="categoria">
+                    <div>
+                        <span class="icone">💳</span>
+                        <span>Outros</span>
+                    </div>
+
+                    <strong id="outros">R$ 0,00</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- HISTÓRICO -->
+        <section class="secao">
+            <div class="titulo-secao">
+                <h2>Últimas transações</h2>
+            </div>
+         
+         <div class="historico" id="listaTransacoes">
+
+                <div class="sem-transacoes">
+                    <span>📊</span>
+                    <p>Suas transações aparecerão aqui.</p>
+                </div>
+                </div>
+        </section>
+
+    </main>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
