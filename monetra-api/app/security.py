@@ -64,14 +64,3 @@ def verificar_token(
             status_code=401,
             detail="Token inválido ou expirado"
         )
-    expiracao = datetime.utcnow() + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
-
-    dados.update({"exp": expiracao})
-
-    return jwt.encode(
-        dados,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
