@@ -48,6 +48,7 @@ def login(
             status_code=401,
             detail="Email ou senha inválidos"
         )
+
     token = criar_token({"sub": str(usuario.id)})
 
     return {
@@ -58,6 +59,7 @@ def login(
         "access_token": token,
         "token_type": "bearer"
     }
+
 
 @router.post("/transacoes", response_model=schemas.TransacaoResponse)
 def criar_transacao(
@@ -79,18 +81,33 @@ def criar_transacao(
 
     return nova_transacao
 
-@router.get("/transacoes/{usuario_id}", response_model=list[schemas.TransacaoResponse])
+
+@router.get(
+    "/transacoes/{usuario_id}",
+    response_model=list[schemas.TransacaoResponse]
+)
 def listar_transacoes(
     usuario_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario_autenticado: int = Depends(verificar_token)
 ):
+    if usuario_autenticado != usuario_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado aos dados de outro usuário."
+        )
+
     transacoes = db.query(models.Transacao).filter(
         models.Transacao.usuario_id == usuario_id
     ).all()
 
     return transacoes
 
-@router.get("/minhas-transacoes", response_model=list[schemas.TransacaoResponse])
+
+@router.get(
+    "/minhas-transacoes",
+    response_model=list[schemas.TransacaoResponse]
+)
 def minhas_transacoes(
     db: Session = Depends(get_db),
     usuario_id: int = Depends(verificar_token)
@@ -100,6 +117,8 @@ def minhas_transacoes(
     ).all()
 
     return transacoes
+
+
 @router.get("/saldo")
 def consultar_saldo(
     db: Session = Depends(get_db),
@@ -129,11 +148,20 @@ def consultar_saldo(
         "total_saidas": saidas,
         "saldo": saldo
     }
+
+
 @router.get("/resumo/{usuario_id}")
 def resumo_financeiro(
     usuario_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario_autenticado: int = Depends(verificar_token)
 ):
+    if usuario_autenticado != usuario_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado aos dados de outro usuário."
+        )
+
     transacoes = db.query(models.Transacao).filter(
         models.Transacao.usuario_id == usuario_id
     ).all()
