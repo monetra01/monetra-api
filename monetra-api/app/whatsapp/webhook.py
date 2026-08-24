@@ -17,30 +17,59 @@ from app.whatsapp.consultas import (
 router = APIRouter()
 
 
+# =========================================================
+# VERIFICAÇÃO DO WEBHOOK PELA META
+# =========================================================
+
 @router.get("/whatsapp/webhook")
 def verificar_webhook(
-    hub_mode: str = Query(None, alias="hub.mode"),
-    hub_verify_token: str = Query(None, alias="hub.verify_token"),
-    hub_challenge: str = Query(None, alias="hub.challenge")
+    hub_mode: str | None = Query(default=None, alias="hub.mode"),
+    hub_verify_token: str | None = Query(
+        default=None,
+        alias="hub.verify_token"
+    ),
+    hub_challenge: str | None = Query(
+        default=None,
+        alias="hub.challenge"
+    )
 ):
-    """
-    Endpoint usado pela Meta para verificar o webhook.
-    """
+    print("=== VERIFICAÇÃO DO WEBHOOK ===")
+    print("hub.mode:", hub_mode)
+    print("hub.verify_token recebido:", bool(hub_verify_token))
+    print("hub.challenge recebido:", hub_challenge)
 
     token_correto = os.getenv("WHATSAPP_VERIFY_TOKEN")
+
+    print(
+        "WHATSAPP_VERIFY_TOKEN configurado:",
+        bool(token_correto)
+    )
 
     if (
         hub_mode == "subscribe"
         and hub_verify_token
+        and token_correto
         and hub_verify_token == token_correto
+        and hub_challenge
     ):
-        return PlainTextResponse(content=hub_challenge)
+        print("✅ WEBHOOK VALIDADO COM SUCESSO")
+
+        return PlainTextResponse(
+            content=hub_challenge,
+            status_code=200
+        )
+
+    print("❌ FALHA NA VALIDAÇÃO DO WEBHOOK")
 
     return PlainTextResponse(
         content="Token de verificação inválido",
         status_code=403
     )
 
+
+# =========================================================
+# RECEBIMENTO DE MENSAGENS
+# =========================================================
 
 @router.post("/whatsapp/webhook")
 async def receber_mensagem(request: Request):
@@ -59,7 +88,10 @@ async def receber_mensagem(request: Request):
             "resposta": "Usuário não identificado."
         }
 
-    # Verifica se é uma consulta
+    # =====================================================
+    # CONSULTA DE SALDO
+    # =====================================================
+
     consulta = identificar_consulta(mensagem)
 
     if consulta == "saldo":
@@ -80,6 +112,10 @@ async def receber_mensagem(request: Request):
             "dados": resultado
         }
 
+    # =====================================================
+    # ÚLTIMAS TRANSAÇÕES
+    # =====================================================
+
     if consulta == "ultimas_transacoes":
 
         transacoes = consultar_ultimas_transacoes(
@@ -89,13 +125,21 @@ async def receber_mensagem(request: Request):
         if not transacoes:
             return {
                 "status": "ok",
-                "resposta": "📭 Você ainda não possui transações registradas."
+                "resposta": (
+                    "📭 Você ainda não possui "
+                    "transações registradas."
+                )
             }
 
         resposta = "📊 Suas últimas transações:\n\n"
 
         for transacao in transacoes:
-            sinal = "📥" if transacao.tipo.lower() == "entrada" else "📤"
+
+            sinal = (
+                "📥"
+                if transacao.tipo.lower() == "entrada"
+                else "📤"
+            )
 
             resposta += (
                 f"{sinal} R$ {transacao.valor:.2f} - "
@@ -108,7 +152,10 @@ async def receber_mensagem(request: Request):
             "resposta": resposta
         }
 
-    # Se não for consulta, tenta registrar uma transação
+    # =====================================================
+    # REGISTRAR TRANSAÇÃO
+    # =====================================================
+
     resultado = processar_mensagem(mensagem)
 
     if not resultado["sucesso"]:
@@ -139,7 +186,7 @@ async def receber_mensagem(request: Request):
         return {
             "status": "ok",
             "resposta": (
-                f"✅ Transação registrada!\n"
+                "✅ Transação registrada!\n"
                 f"💰 Valor: R$ {resultado['valor']:.2f}\n"
                 f"📌 Tipo: {resultado['tipo']}\n"
                 f"📂 Categoria: {resultado['categoria']}"

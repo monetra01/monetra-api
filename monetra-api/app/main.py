@@ -27,7 +27,7 @@ app.add_middleware(
 @app.get("/")
 def home():
     return {
-        "message": "🚀 Bem-vindo à API da Monetra!"
+
     } 
 app.include_router(router)
 app.include_router(whatsapp_router)
