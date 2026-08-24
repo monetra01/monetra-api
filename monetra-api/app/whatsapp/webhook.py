@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Request
+import os
+
+from fastapi import APIRouter, Request, Query
+from fastapi.responses import PlainTextResponse
 
 from app.whatsapp.processador import (
     processar_mensagem,
@@ -15,10 +18,28 @@ router = APIRouter()
 
 
 @router.get("/whatsapp/webhook")
-def verificar_webhook():
-    return {
-        "status": "Monetra WhatsApp webhook funcionando"
-    }
+def verificar_webhook(
+    hub_mode: str = Query(None, alias="hub.mode"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token"),
+    hub_challenge: str = Query(None, alias="hub.challenge")
+):
+    """
+    Endpoint usado pela Meta para verificar o webhook.
+    """
+
+    token_correto = os.getenv("WHATSAPP_VERIFY_TOKEN")
+
+    if (
+        hub_mode == "subscribe"
+        and hub_verify_token
+        and hub_verify_token == token_correto
+    ):
+        return PlainTextResponse(content=hub_challenge)
+
+    return PlainTextResponse(
+        content="Token de verificação inválido",
+        status_code=403
+    )
 
 
 @router.post("/whatsapp/webhook")
@@ -52,12 +73,13 @@ async def receber_mensagem(request: Request):
         return {
             "status": "ok",
             "resposta": (
-                f"💰 Seu saldo atual é R$ {resultado['saldo']:.2f}\n"
-                f"📥 Total de entradas: R$ {resultado['total_entradas']:.2f}\n"
-                f"📤 Total de saídas: R$ {resultado['total_saidas']:.2f}"
+                f"💰 Seu saldo atual é R$ {saldo:.2f}\n"
+                f"📥 Total de entradas: R$ {entradas:.2f}\n"
+                f"📤 Total de saídas: R$ {saidas:.2f}"
             ),
             "dados": resultado
         }
+
     if consulta == "ultimas_transacoes":
 
         transacoes = consultar_ultimas_transacoes(
