@@ -1,5 +1,4 @@
 import os
-
 import httpx
 
 from fastapi import APIRouter, Request, Query
@@ -23,11 +22,10 @@ router = APIRouter()
 # CONFIGURAÇÃO DO WHATSAPP
 # =========================================================
 
-WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
-WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+WHATSAPP_ACCESS_TOKEN = os.getenv(
+    "WHATSAPP_ACCESS_TOKEN"
+)
 
-# Pode ser alterada pelo Environment do Render.
-# Não coloque o token aqui.
 WHATSAPP_API_VERSION = os.getenv(
     "WHATSAPP_API_VERSION",
     "v23.0"
@@ -40,20 +38,22 @@ WHATSAPP_API_VERSION = os.getenv(
 
 async def enviar_mensagem_whatsapp(
     numero: str,
-    mensagem: str
+    mensagem: str,
+    phone_number_id: str | None = None
 ):
+
     if not WHATSAPP_ACCESS_TOKEN:
         print("❌ WHATSAPP_ACCESS_TOKEN não configurado")
         return False
 
-    if not WHATSAPP_PHONE_NUMBER_ID:
-        print("❌ WHATSAPP_PHONE_NUMBER_ID não configurado")
+    if not phone_number_id:
+        print("❌ PHONE_NUMBER_ID não recebido")
         return False
 
     url = (
         f"https://graph.facebook.com/"
         f"{WHATSAPP_API_VERSION}/"
-        f"{WHATSAPP_PHONE_NUMBER_ID}/messages"
+        f"{phone_number_id}/messages"
     )
 
     headers = {
@@ -72,7 +72,9 @@ async def enviar_mensagem_whatsapp(
 
     try:
 
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(
+            timeout=20
+        ) as client:
 
             response = await client.post(
                 url,
@@ -80,14 +82,28 @@ async def enviar_mensagem_whatsapp(
                 json=payload
             )
 
-        print("WhatsApp API status:", response.status_code)
-        print("WhatsApp API resposta:", response.text)
+        print(
+            "WhatsApp API status:",
+            response.status_code
+        )
+
+        print(
+            "WhatsApp API resposta:",
+            response.text
+        )
 
         if response.is_success:
-            print("✅ Mensagem enviada pelo WhatsApp")
+
+            print(
+                "✅ Mensagem enviada pelo WhatsApp"
+            )
+
             return True
 
-        print("❌ Erro ao enviar mensagem pelo WhatsApp")
+        print(
+            "❌ Erro ao enviar mensagem pelo WhatsApp"
+        )
+
         return False
 
     except Exception as erro:
@@ -106,23 +122,30 @@ async def enviar_mensagem_whatsapp(
 
 @router.get("/whatsapp/webhook")
 def verificar_webhook(
+
     hub_mode: str | None = Query(
         default=None,
         alias="hub.mode"
     ),
+
     hub_verify_token: str | None = Query(
         default=None,
         alias="hub.verify_token"
     ),
+
     hub_challenge: str | None = Query(
         default=None,
         alias="hub.challenge"
     )
+
 ):
 
     print("=== VERIFICAÇÃO DO WEBHOOK ===")
 
-    print("hub.mode:", hub_mode)
+    print(
+        "hub.mode:",
+        hub_mode
+    )
 
     print(
         "hub.verify_token recebido:",
@@ -188,17 +211,23 @@ async def receber_mensagem(
     print("Dados recebidos:")
     print(dados)
 
-    # =====================================================
-    # IDENTIFICAR SE É WEBHOOK REAL DA META
-    # =====================================================
-
     numero_whatsapp = None
     mensagem = None
     usuario_id = dados.get("usuario_id")
 
+    # ID do número do WhatsApp Business
+    phone_number_id = None
+
+    # =====================================================
+    # IDENTIFICAR WEBHOOK DA META
+    # =====================================================
+
     try:
 
-        entry = dados.get("entry", [])
+        entry = dados.get(
+            "entry",
+            []
+        )
 
         if entry:
 
@@ -212,6 +241,24 @@ async def receber_mensagem(
                 value = changes[0].get(
                     "value",
                     {}
+                )
+
+                # -------------------------------------------------
+                # PEGAR O PHONE_NUMBER_ID DIRETAMENTE DA META
+                # -------------------------------------------------
+
+                metadata = value.get(
+                    "metadata",
+                    {}
+                )
+
+                phone_number_id = metadata.get(
+                    "phone_number_id"
+                )
+
+                print(
+                    "📞 PHONE_NUMBER_ID:",
+                    phone_number_id
                 )
 
                 messages = value.get(
@@ -234,11 +281,15 @@ async def receber_mensagem(
                 mensagem_obj = messages[0]
 
                 numero_whatsapp = (
-                    mensagem_obj.get("from")
+                    mensagem_obj.get(
+                        "from"
+                    )
                 )
 
                 tipo_mensagem = (
-                    mensagem_obj.get("type")
+                    mensagem_obj.get(
+                        "type"
+                    )
                 )
 
                 if tipo_mensagem == "text":
@@ -261,7 +312,8 @@ async def receber_mensagem(
                         await enviar_mensagem_whatsapp(
                             numero_whatsapp,
                             "⚠️ Por enquanto, consigo "
-                            "processar apenas mensagens de texto."
+                            "processar apenas mensagens de texto.",
+                            phone_number_id
                         )
 
                     return {
@@ -301,15 +353,10 @@ async def receber_mensagem(
         mensagem
     )
 
+
     # =====================================================
     # IDENTIFICAÇÃO DO USUÁRIO
     # =====================================================
-
-    # Durante o primeiro teste podemos usar
-    # WHATSAPP_DEFAULT_USER_ID no Render.
-    #
-    # Depois vamos substituir isso por uma
-    # identificação real através do número WhatsApp.
 
     if not usuario_id:
 
@@ -332,7 +379,8 @@ async def receber_mensagem(
 
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
-                resposta
+                resposta,
+                phone_number_id
             )
 
         return {
@@ -340,7 +388,9 @@ async def receber_mensagem(
             "resposta": resposta
         }
 
-    usuario_id = int(usuario_id)
+    usuario_id = int(
+        usuario_id
+    )
 
 
     # =====================================================
@@ -357,7 +407,9 @@ async def receber_mensagem(
             usuario_id
         )
 
-        saldo = resultado["saldo"]
+        saldo = resultado[
+            "saldo"
+        ]
 
         entradas = resultado[
             "total_entradas"
@@ -380,7 +432,8 @@ async def receber_mensagem(
 
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
-                resposta
+                resposta,
+                phone_number_id
             )
 
         return {
@@ -433,7 +486,8 @@ async def receber_mensagem(
 
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
-                resposta
+                resposta,
+                phone_number_id
             )
 
         return {
@@ -452,13 +506,16 @@ async def receber_mensagem(
 
     if not resultado["sucesso"]:
 
-        resposta = resultado["resposta"]
+        resposta = resultado[
+            "resposta"
+        ]
 
         if numero_whatsapp:
 
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
-                resposta
+                resposta,
+                phone_number_id
             )
 
         return {
@@ -466,6 +523,10 @@ async def receber_mensagem(
             "resposta": resposta
         }
 
+
+    # =====================================================
+    # SALVAR TRANSAÇÃO
+    # =====================================================
 
     from app.database import SessionLocal
     from app import models
@@ -519,7 +580,8 @@ async def receber_mensagem(
 
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
-                resposta
+                resposta,
+                phone_number_id
             )
 
         return {
