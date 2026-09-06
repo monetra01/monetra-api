@@ -9,9 +9,12 @@ from app.whatsapp.processador import (
     identificar_consulta
 )
 
+from app.ai.agente import responder_com_ia
+
 from app.whatsapp.consultas import (
     consultar_saldo,
-    consultar_ultimas_transacoes
+    consultar_ultimas_transacoes,
+    consultar_gastos_mes
 )
 
 
@@ -394,7 +397,37 @@ async def receber_mensagem(
 
 
     # =====================================================
-    # CONSULTA DE SALDO
+    # CAMADA DE INTELIGÊNCIA ARTIFICIAL
+    # =====================================================
+
+    # Quando OPENAI_API_KEY está configurada, a IA interpreta a mensagem e
+    # chama as ferramentas financeiras seguras da Monetra. Sem a chave,
+    # preservamos o processador determinístico atual como fallback.
+    try:
+        resposta_ia = await responder_com_ia(
+            mensagem,
+            usuario_id
+        )
+
+        if resposta_ia:
+            if numero_whatsapp:
+                await enviar_mensagem_whatsapp(
+                    numero_whatsapp,
+                    resposta_ia,
+                    phone_number_id
+                )
+
+            return {
+                "status": "ok",
+                "resposta": resposta_ia,
+                "modo": "ia"
+            }
+
+    except Exception as erro:
+        print("❌ Erro na camada de IA; usando fallback:", erro)
+
+    # =====================================================
+    # PROCESSADOR DETERMINÍSTICO / FALLBACK
     # =====================================================
 
     consulta = identificar_consulta(
@@ -440,6 +473,32 @@ async def receber_mensagem(
             "status": "ok",
             "resposta": resposta,
             "dados": resultado
+        }
+
+
+    # =====================================================
+    # GASTOS DO MÊS
+    # =====================================================
+
+    if consulta == "gastos_mes":
+
+        total = consultar_gastos_mes(usuario_id)
+
+        resposta = (
+            f"💸 Você gastou R$ {total:.2f} neste mês."
+        )
+
+        if numero_whatsapp:
+            await enviar_mensagem_whatsapp(
+                numero_whatsapp,
+                resposta,
+                phone_number_id
+            )
+
+        return {
+            "status": "ok",
+            "resposta": resposta,
+            "total_gastos_mes": total
         }
 
 
