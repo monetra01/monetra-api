@@ -10,6 +10,7 @@ class Usuario(Base):
     nome = Column(String, nullable=False)
     email = Column(String, unique=True, index=True)
     senha = Column(String, nullable=False)
+    whatsapp_numero = Column(String, unique=True, index=True, nullable=True)
 
 
 class Transacao(Base):

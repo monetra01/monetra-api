@@ -4,6 +4,9 @@ import httpx
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import PlainTextResponse
 
+from app.database import SessionLocal
+from app import models
+
 from app.whatsapp.processador import (
     processar_mensagem,
     identificar_consulta
@@ -216,7 +219,7 @@ async def receber_mensagem(
 
     numero_whatsapp = None
     mensagem = None
-    usuario_id = dados.get("usuario_id")
+    usuario_id = None
 
     # ID do número do WhatsApp Business
     phone_number_id = None
@@ -358,24 +361,60 @@ async def receber_mensagem(
 
 
     # =====================================================
-    # IDENTIFICAÇÃO DO USUÁRIO
+    # IDENTIFICAÇÃO AUTOMÁTICA DO USUÁRIO PELO WHATSAPP
+    # =====================================================
+
+    if numero_whatsapp:
+
+        db = SessionLocal()
+
+        try:
+
+            usuario = (
+                db.query(models.Usuario)
+                .filter(
+                    models.Usuario.whatsapp_numero
+                    == numero_whatsapp
+                )
+                .first()
+            )
+
+            if usuario:
+
+                usuario_id = usuario.id
+
+                print(
+                    "👤 Usuário identificado pelo WhatsApp:",
+                    usuario_id
+                )
+
+            else:
+
+                print(
+                    "⚠️ Número WhatsApp não cadastrado."
+                )
+
+        except Exception as erro:
+
+            print(
+                "❌ Erro ao buscar usuário pelo WhatsApp:",
+                erro
+            )
+
+        finally:
+
+            db.close()
+
+
+    # =====================================================
+    # USUÁRIO NÃO IDENTIFICADO
     # =====================================================
 
     if not usuario_id:
 
-        usuario_id = os.getenv(
-            "WHATSAPP_DEFAULT_USER_ID"
-        )
-
-    print(
-        "👤 Usuário:",
-        usuario_id
-    )
-
-    if not usuario_id:
-
         resposta = (
-            "❌ Usuário não identificado."
+            "👋 Este WhatsApp ainda não está vinculado "
+            "a uma conta Monetra."
         )
 
         if numero_whatsapp:
@@ -390,10 +429,6 @@ async def receber_mensagem(
             "status": "erro",
             "resposta": resposta
         }
-
-    usuario_id = int(
-        usuario_id
-    )
 
 
     # =====================================================
@@ -586,9 +621,6 @@ async def receber_mensagem(
     # =====================================================
     # SALVAR TRANSAÇÃO
     # =====================================================
-
-    from app.database import SessionLocal
-    from app import models
 
     db = SessionLocal()
 
