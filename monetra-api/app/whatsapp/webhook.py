@@ -12,6 +12,13 @@ from app.whatsapp.processador import (
     identificar_consulta
 )
 
+from app.whatsapp.cadastro import (
+    buscar_cadastro_pendente,
+    criar_cadastro_pendente,
+    atualizar_cadastro_pendente,
+    concluir_cadastro
+)
+
 from app.ai.agente import responder_com_ia
 
 from app.whatsapp.consultas import (

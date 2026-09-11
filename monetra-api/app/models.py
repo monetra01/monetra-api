@@ -10,18 +10,70 @@ class Usuario(Base):
     nome = Column(String, nullable=False)
     email = Column(String, unique=True, index=True)
     senha = Column(String, nullable=False)
-    whatsapp_numero = Column(String, unique=True, index=True, nullable=True)
+
+    whatsapp_numero = Column(
+        String,
+        unique=True,
+        index=True,
+        nullable=True
+    )
 
 
 class Transacao(Base):
     __tablename__ = "transacoes"
 
     id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    usuario_id = Column(
+        Integer,
+        ForeignKey("usuarios.id"),
+        nullable=False
+    )
 
     descricao = Column(String, nullable=False)
     valor = Column(Numeric(10, 2), nullable=False)
     tipo = Column(String, nullable=False)
     categoria = Column(String, nullable=True)
 
-    data = Column(DateTime, server_default=func.now())
+    data = Column(
+        DateTime,
+        server_default=func.now()
+    )
+
+
+class CadastroPendente(Base):
+    __tablename__ = "cadastros_pendentes"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    whatsapp_numero = Column(
+        String,
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    etapa = Column(
+        String,
+        nullable=False,
+        default="aguardando_confirmacao"
+    )
+
+    nome = Column(
+        String,
+        nullable=True
+    )
+
+    criado_em = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    atualizado_em = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
