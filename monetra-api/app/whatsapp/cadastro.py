@@ -25,7 +25,7 @@ def criar_cadastro_pendente(numero_whatsapp):
     try:
         cadastro = models.CadastroPendente(
             whatsapp_numero=numero_whatsapp,
-            etapa="aguardando_confirmacao"
+            etapa="aguardando_nome"
         )
 
         db.add(cadastro)

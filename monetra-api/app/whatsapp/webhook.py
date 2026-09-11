@@ -414,18 +414,146 @@ async def receber_mensagem(
 
 
     # =====================================================
-    # USUÁRIO NÃO IDENTIFICADO
+    # CADASTRO AUTOMÁTICO DE NOVOS USUÁRIOS
     # =====================================================
 
     if not usuario_id:
 
-        resposta = (
-            "👋 Este WhatsApp ainda não está vinculado "
-            "a uma conta Monetra."
+        if not numero_whatsapp:
+            return {
+                "status": "erro",
+                "resposta": "Não foi possível identificar o número do WhatsApp."
+            }
+
+        cadastro_pendente = buscar_cadastro_pendente(
+            numero_whatsapp
         )
 
-        if numero_whatsapp:
+        if not cadastro_pendente:
+            try:
+                criar_cadastro_pendente(
+                    numero_whatsapp
+                )
+            except Exception as erro:
+                print(
+                    "⚠️ Não foi possível criar cadastro pendente:",
+                    erro
+                )
 
+            resposta = (
+                "👋 Oi! Eu sou a Monetra 😊\n\n"
+                "Percebi que você ainda não tem uma conta. "
+                "Vamos criar a sua? É rapidinho.\n\n"
+                "Qual é o seu nome?"
+            )
+
+        else:
+            etapa = cadastro_pendente.etapa
+
+            # Corrige cadastros pendentes antigos que ainda estejam
+            # aguardando confirmação, mas sem nome informado.
+            if not cadastro_pendente.nome:
+                etapa = "aguardando_nome"
+
+            if etapa == "aguardando_nome":
+                nome = mensagem.strip()
+
+                # Permite respostas naturais como "Meu nome é Bruno".
+                nome_lower = nome.lower()
+                prefixos = [
+                    "meu nome é ",
+                    "meu nome e ",
+                    "sou o ",
+                    "sou a "
+                ]
+
+                for prefixo in prefixos:
+                    if nome_lower.startswith(prefixo):
+                        nome = nome[len(prefixo):].strip()
+                        break
+
+                if len(nome) < 2 or len(nome) > 80:
+                    resposta = (
+                        "😊 Quero acertar seu cadastro. "
+                        "Pode me dizer seu nome, por favor?"
+                    )
+                else:
+                    cadastro_atualizado = atualizar_cadastro_pendente(
+                        numero_whatsapp,
+                        etapa="aguardando_confirmacao",
+                        nome=nome
+                    )
+
+                    if cadastro_atualizado:
+                        resposta = (
+                            f"Prazer, {nome}! 😊\n\n"
+                            "Seu nome está certo?\n"
+                            "Responda *sim* para criar sua conta "
+                            "ou me diga se quer corrigir o nome."
+                        )
+                    else:
+                        resposta = (
+                            "Tive um probleminha ao salvar seu nome. "
+                            "Pode tentar novamente? 😊"
+                        )
+
+            elif etapa == "aguardando_confirmacao":
+                confirmacao = mensagem.strip().lower()
+                respostas_sim = {
+                    "sim", "s", "sim!", "isso", "correto",
+                    "correto!", "pode", "pode sim", "confirmo",
+                    "confirmado"
+                }
+
+                if confirmacao in respostas_sim:
+                    usuario = concluir_cadastro(
+                        numero_whatsapp
+                    )
+
+                    if usuario:
+                        usuario_id = usuario.id
+                        resposta = (
+                            f"🎉 Pronto, {usuario.nome}! "
+                            "Sua conta Monetra foi criada.\n\n"
+                            "Agora pode falar comigo normalmente. "
+                            "Por exemplo: *gastei 30 reais com gasolina* "
+                            "ou *qual é meu saldo?* 💰"
+                        )
+                    else:
+                        resposta = (
+                            "Não consegui concluir seu cadastro agora. "
+                            "Vamos tentar novamente? 😊"
+                        )
+                else:
+                    # Trata qualquer correção simples como um novo nome.
+                    nome = mensagem.strip()
+                    nome_lower = nome.lower()
+                    if nome_lower.startswith("não") or nome_lower.startswith("nao"):
+                        resposta = (
+                            "Sem problema! 😊 Qual nome você gostaria "
+                            "de usar no seu cadastro?"
+                        )
+                        atualizar_cadastro_pendente(
+                            numero_whatsapp,
+                            etapa="aguardando_nome"
+                        )
+                    else:
+                        resposta = (
+                            "Só preciso da sua confirmação 😊\n\n"
+                            "Seu nome está certo? Responda *sim* para "
+                            "criar sua conta, ou *não* para corrigir."
+                        )
+            else:
+                atualizar_cadastro_pendente(
+                    numero_whatsapp,
+                    etapa="aguardando_nome"
+                )
+                resposta = (
+                    "Vamos continuar seu cadastro 😊\n\n"
+                    "Qual é o seu nome?"
+                )
+
+        if numero_whatsapp:
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
                 resposta,
@@ -433,10 +561,10 @@ async def receber_mensagem(
             )
 
         return {
-            "status": "erro",
-            "resposta": resposta
+            "status": "ok",
+            "resposta": resposta,
+            "modo": "cadastro"
         }
-
 
     # =====================================================
     # CAMADA DE INTELIGÊNCIA ARTIFICIAL
