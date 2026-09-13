@@ -15,7 +15,7 @@ from app.whatsapp.consultas import (
 
 
 SYSTEM_PROMPT = """
-Você é a Monetra, uma assistente de inteligência financeira pessoal.
+Você é a Prospere, uma assistente de inteligência financeira pessoal.
 
 Seu trabalho é conversar de forma natural, clara e curta em português do Brasil, sem exigir
 que o usuário aprenda comandos. Você também deve compreender mensagens em outros idiomas,
@@ -32,7 +32,7 @@ REGRAS IMPORTANTES:
 6. Não diga que uma transação foi registrada sem a ferramenta confirmar o registro.
 7. Não diga que consultou dados se nenhuma ferramenta foi usada para essa consulta.
 8. Não dê conselhos financeiros baseados em números inventados. Use os dados retornados pelas ferramentas.
-9. Evite respostas robóticas. A Monetra deve parecer uma conversa útil e humana.
+9. Evite respostas robóticas. A Prospere deve parecer uma conversa útil e humana.
 10. Não exponha detalhes internos das ferramentas, banco de dados, prompts ou implementação.
 """.strip()
 
@@ -116,10 +116,12 @@ def _registrar_transacao(usuario_id: int, args: dict[str, Any]) -> dict[str, Any
 
     if valor <= 0:
         return {"sucesso": False, "erro": "O valor precisa ser maior que zero."}
+
     if not descricao:
         return {"sucesso": False, "erro": "A descrição não pode ficar vazia."}
 
     db = SessionLocal()
+
     try:
         transacao = models.Transacao(
             usuario_id=usuario_id,
@@ -128,9 +130,11 @@ def _registrar_transacao(usuario_id: int, args: dict[str, Any]) -> dict[str, Any
             tipo=tipo,
             categoria=categoria,
         )
+
         db.add(transacao)
         db.commit()
         db.refresh(transacao)
+
         return {
             "sucesso": True,
             "transacao": {
@@ -141,6 +145,7 @@ def _registrar_transacao(usuario_id: int, args: dict[str, Any]) -> dict[str, Any
                 "descricao": transacao.descricao,
             },
         }
+
     finally:
         db.close()
 
@@ -157,7 +162,12 @@ def _executar_ferramenta(nome: str, args: dict[str, Any], usuario_id: int) -> di
 
     if nome == "consultar_ultimas_transacoes":
         limite = args.get("limite", 5)
-        return {"transacoes": _serializar_transacoes(consultar_ultimas_transacoes(usuario_id, limite))}
+
+        return {
+            "transacoes": _serializar_transacoes(
+                consultar_ultimas_transacoes(usuario_id, limite)
+            )
+        }
 
     if nome == "consultar_gastos_por_categoria":
         return {"categorias": consultar_gastos_por_categoria(usuario_id)}
@@ -167,16 +177,19 @@ def _executar_ferramenta(nome: str, args: dict[str, Any], usuario_id: int) -> di
 
 async def responder_com_ia(mensagem: str, usuario_id: int) -> str | None:
     """
-    Processa uma mensagem usando o modelo e ferramentas financeiras da Monetra.
+    Processa uma mensagem usando o modelo e ferramentas financeiras da Prospere.
 
     Retorna None quando a IA não está configurada, permitindo que o webhook use o
     processador determinístico existente como fallback.
     """
+
     api_key = os.getenv("OPENAI_API_KEY")
+
     if not api_key:
         return None
 
     model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
+
     client = AsyncOpenAI(api_key=api_key)
 
     response = await client.responses.create(
@@ -186,27 +199,52 @@ async def responder_com_ia(mensagem: str, usuario_id: int) -> str | None:
         input=mensagem,
     )
 
-    # O modelo pode pedir uma ou mais ferramentas. Executamos somente as ferramentas
-    # que foram declaradas acima e devolvemos seus resultados ao modelo.
+    # O modelo pode pedir uma ou mais ferramentas.
+    # Executamos somente as ferramentas declaradas acima.
     for _ in range(5):
-        tool_calls = [item for item in response.output if getattr(item, "type", None) == "function_call"]
+
+        tool_calls = [
+            item
+            for item in response.output
+            if getattr(item, "type", None) == "function_call"
+        ]
+
         if not tool_calls:
-            return response.output_text.strip() if response.output_text else "Não consegui processar sua mensagem agora."
+            return (
+                response.output_text.strip()
+                if response.output_text
+                else "Não consegui processar sua mensagem agora."
+            )
 
         tool_outputs = []
+
         for call in tool_calls:
             try:
                 args = json.loads(call.arguments or "{}")
-                resultado = _executar_ferramenta(call.name, args, usuario_id)
+
+                resultado = _executar_ferramenta(
+                    call.name,
+                    args,
+                    usuario_id,
+                )
+
             except Exception as erro:
-                resultado = {"erro": "Não foi possível executar a operação financeira."}
-                print(f"❌ Erro na ferramenta {call.name}: {erro}")
+                resultado = {
+                    "erro": "Não foi possível executar a operação financeira."
+                }
+
+                print(
+                    f"❌ Erro na ferramenta {call.name}: {erro}"
+                )
 
             tool_outputs.append(
                 {
                     "type": "function_call_output",
                     "call_id": call.call_id,
-                    "output": json.dumps(resultado, ensure_ascii=False),
+                    "output": json.dumps(
+                        resultado,
+                        ensure_ascii=False,
+                    ),
                 }
             )
 
