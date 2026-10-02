@@ -23,6 +23,7 @@ class Transacao(Base):
     __tablename__ = "transacoes"
 
     id = Column(Integer, primary_key=True, index=True)
+
     usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id"),
@@ -30,9 +31,21 @@ class Transacao(Base):
     )
 
     descricao = Column(String, nullable=False)
-    valor = Column(Numeric(10, 2), nullable=False)
-    tipo = Column(String, nullable=False)
-    categoria = Column(String, nullable=True)
+
+    valor = Column(
+        Numeric(10, 2),
+        nullable=False
+    )
+
+    tipo = Column(
+        String,
+        nullable=False
+    )
+
+    categoria = Column(
+        String,
+        nullable=True
+    )
 
     data = Column(
         DateTime,
@@ -76,4 +89,33 @@ class CadastroPendente(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now()
+    )
+
+
+class MensagemWhatsAppProcessada(Base):
+    """
+    Guarda o ID único (wamid) das mensagens recebidas pelo WhatsApp.
+
+    Isso impede que a mesma mensagem seja processada mais de uma vez
+    caso a Meta envie novamente o mesmo webhook.
+    """
+
+    __tablename__ = "mensagens_whatsapp_processadas"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    wamid = Column(
+        String,
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    criado_em = Column(
+        DateTime,
+        server_default=func.now()
     )

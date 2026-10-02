@@ -1,8 +1,10 @@
 import os
+
 import httpx
 
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import PlainTextResponse
+from sqlalchemy.exc import IntegrityError
 
 from app.database import SessionLocal
 from app import models
@@ -231,6 +233,9 @@ async def receber_mensagem(
     # ID do número do WhatsApp Business
     phone_number_id = None
 
+    # ID único da mensagem enviada pela Meta
+    wamid = None
+
     # =====================================================
     # IDENTIFICAR WEBHOOK DA META
     # =====================================================
@@ -293,6 +298,14 @@ async def receber_mensagem(
 
                 mensagem_obj = messages[0]
 
+                # -------------------------------------------------
+                # ID ÚNICO DA MENSAGEM
+                # -------------------------------------------------
+
+                wamid = mensagem_obj.get(
+                    "id"
+                )
+
                 numero_whatsapp = (
                     mensagem_obj.get(
                         "from"
@@ -304,6 +317,99 @@ async def receber_mensagem(
                         "type"
                     )
                 )
+
+                print(
+                    "🆔 WAMID:",
+                    wamid
+                )
+
+                # -------------------------------------------------
+                # IMPEDIR PROCESSAMENTO DUPLICADO
+                # -------------------------------------------------
+
+                if wamid:
+
+                    db = SessionLocal()
+
+                    try:
+
+                        mensagem_existente = (
+                            db.query(
+                                models.MensagemWhatsAppProcessada
+                            )
+                            .filter(
+                                models.MensagemWhatsAppProcessada.wamid
+                                == wamid
+                            )
+                            .first()
+                        )
+
+                        if mensagem_existente:
+
+                            print(
+                                "♻️ Mensagem já processada. "
+                                "Ignorando duplicação:",
+                                wamid
+                            )
+
+                            return {
+                                "status": "ok",
+                                "duplicada": True
+                            }
+
+                        nova_mensagem = (
+                            models.MensagemWhatsAppProcessada(
+                                wamid=wamid
+                            )
+                        )
+
+                        db.add(
+                            nova_mensagem
+                        )
+
+                        try:
+
+                            db.commit()
+
+                            print(
+                                "✅ WAMID registrado:",
+                                wamid
+                            )
+
+                        except IntegrityError:
+
+                            db.rollback()
+
+                            print(
+                                "♻️ WAMID já registrado por outro "
+                                "processamento. Ignorando:",
+                                wamid
+                            )
+
+                            return {
+                                "status": "ok",
+                                "duplicada": True
+                            }
+
+                    except Exception as erro:
+
+                        db.rollback()
+
+                        print(
+                            "❌ Erro ao registrar WAMID:",
+                            erro
+                        )
+
+                        # Não bloqueia a mensagem se houver
+                        # problema no controle de duplicidade.
+
+                    finally:
+
+                        db.close()
+
+                # -------------------------------------------------
+                # IDENTIFICAR TIPO DA MENSAGEM
+                # -------------------------------------------------
 
                 if tipo_mensagem == "text":
 
@@ -430,11 +536,15 @@ async def receber_mensagem(
         )
 
         if not cadastro_pendente:
+
             try:
+
                 criar_cadastro_pendente(
                     numero_whatsapp
                 )
+
             except Exception as erro:
+
                 print(
                     "⚠️ Não foi possível criar cadastro pendente:",
                     erro
@@ -448,18 +558,23 @@ async def receber_mensagem(
             )
 
         else:
+
             etapa = cadastro_pendente.etapa
 
             # Corrige cadastros pendentes antigos que ainda estejam
             # aguardando confirmação, mas sem nome informado.
+
             if not cadastro_pendente.nome:
                 etapa = "aguardando_nome"
 
             if etapa == "aguardando_nome":
+
                 nome = mensagem.strip()
 
                 # Permite respostas naturais como "Meu nome é Bruno".
+
                 nome_lower = nome.lower()
+
                 prefixos = [
                     "meu nome é ",
                     "meu nome e ",
@@ -468,16 +583,24 @@ async def receber_mensagem(
                 ]
 
                 for prefixo in prefixos:
+
                     if nome_lower.startswith(prefixo):
-                        nome = nome[len(prefixo):].strip()
+
+                        nome = nome[
+                            len(prefixo):
+                        ].strip()
+
                         break
 
                 if len(nome) < 2 or len(nome) > 80:
+
                     resposta = (
                         "😊 Quero acertar seu cadastro. "
                         "Pode me dizer seu nome, por favor?"
                     )
+
                 else:
+
                     cadastro_atualizado = atualizar_cadastro_pendente(
                         numero_whatsapp,
                         etapa="aguardando_confirmacao",
@@ -485,33 +608,48 @@ async def receber_mensagem(
                     )
 
                     if cadastro_atualizado:
+
                         resposta = (
                             f"Prazer, {nome}! 😊\n\n"
                             "Seu nome está certo?\n"
                             "Responda *sim* para criar sua conta "
                             "ou me diga se quer corrigir o nome."
                         )
+
                     else:
+
                         resposta = (
                             "Tive um probleminha ao salvar seu nome. "
                             "Pode tentar novamente? 😊"
                         )
 
             elif etapa == "aguardando_confirmacao":
+
                 confirmacao = mensagem.strip().lower()
+
                 respostas_sim = {
-                    "sim", "s", "sim!", "isso", "correto",
-                    "correto!", "pode", "pode sim", "confirmo",
+                    "sim",
+                    "s",
+                    "sim!",
+                    "isso",
+                    "correto",
+                    "correto!",
+                    "pode",
+                    "pode sim",
+                    "confirmo",
                     "confirmado"
                 }
 
                 if confirmacao in respostas_sim:
+
                     usuario = concluir_cadastro(
                         numero_whatsapp
                     )
 
                     if usuario:
+
                         usuario_id = usuario.id
+
                         resposta = (
                             f"🎉 Pronto, {usuario.nome}! "
                             "Sua conta Monetra foi criada.\n\n"
@@ -519,41 +657,59 @@ async def receber_mensagem(
                             "Por exemplo: *gastei 30 reais com gasolina* "
                             "ou *qual é meu saldo?* 💰"
                         )
+
                     else:
+
                         resposta = (
                             "Não consegui concluir seu cadastro agora. "
                             "Vamos tentar novamente? 😊"
                         )
+
                 else:
+
                     # Trata qualquer correção simples como um novo nome.
+
                     nome = mensagem.strip()
+
                     nome_lower = nome.lower()
-                    if nome_lower.startswith("não") or nome_lower.startswith("nao"):
+
+                    if (
+                        nome_lower.startswith("não")
+                        or nome_lower.startswith("nao")
+                    ):
+
                         resposta = (
                             "Sem problema! 😊 Qual nome você gostaria "
                             "de usar no seu cadastro?"
                         )
+
                         atualizar_cadastro_pendente(
                             numero_whatsapp,
                             etapa="aguardando_nome"
                         )
+
                     else:
+
                         resposta = (
                             "Só preciso da sua confirmação 😊\n\n"
                             "Seu nome está certo? Responda *sim* para "
                             "criar sua conta, ou *não* para corrigir."
                         )
+
             else:
+
                 atualizar_cadastro_pendente(
                     numero_whatsapp,
                     etapa="aguardando_nome"
                 )
+
                 resposta = (
                     "Vamos continuar seu cadastro 😊\n\n"
                     "Qual é o seu nome?"
                 )
 
         if numero_whatsapp:
+
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
                 resposta,
@@ -566,6 +722,7 @@ async def receber_mensagem(
             "modo": "cadastro"
         }
 
+
     # =====================================================
     # CAMADA DE INTELIGÊNCIA ARTIFICIAL
     # =====================================================
@@ -573,14 +730,18 @@ async def receber_mensagem(
     # Quando OPENAI_API_KEY está configurada, a IA interpreta a mensagem e
     # chama as ferramentas financeiras seguras da Monetra. Sem a chave,
     # preservamos o processador determinístico atual como fallback.
+
     try:
+
         resposta_ia = await responder_com_ia(
             mensagem,
             usuario_id
         )
 
         if resposta_ia:
+
             if numero_whatsapp:
+
                 await enviar_mensagem_whatsapp(
                     numero_whatsapp,
                     resposta_ia,
@@ -594,7 +755,12 @@ async def receber_mensagem(
             }
 
     except Exception as erro:
-        print("❌ Erro na camada de IA; usando fallback:", erro)
+
+        print(
+            "❌ Erro na camada de IA; usando fallback:",
+            erro
+        )
+
 
     # =====================================================
     # PROCESSADOR DETERMINÍSTICO / FALLBACK
@@ -603,6 +769,11 @@ async def receber_mensagem(
     consulta = identificar_consulta(
         mensagem
     )
+
+
+    # =====================================================
+    # SALDO
+    # =====================================================
 
     if consulta == "saldo":
 
@@ -652,13 +823,16 @@ async def receber_mensagem(
 
     if consulta == "gastos_mes":
 
-        total = consultar_gastos_mes(usuario_id)
+        total = consultar_gastos_mes(
+            usuario_id
+        )
 
         resposta = (
             f"💸 Você gastou R$ {total:.2f} neste mês."
         )
 
         if numero_whatsapp:
+
             await enviar_mensagem_whatsapp(
                 numero_whatsapp,
                 resposta,
