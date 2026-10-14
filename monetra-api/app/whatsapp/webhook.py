@@ -11,7 +11,16 @@ from app import models
 
 from app.whatsapp.processador import (
     processar_mensagem,
-    identificar_consulta
+    identificar_consulta,
+    identificar_correcao
+)
+
+from app.whatsapp.correcoes import (
+    tratar_correcao
+)
+
+from app.texto import (
+    formatar_moeda
 )
 
 from app.whatsapp.cadastro import (
@@ -551,7 +560,7 @@ async def receber_mensagem(
                 )
 
             resposta = (
-                "👋 Oi! Eu sou a Monetra 😊\n\n"
+                "👋 Oi! Eu sou a Prospere 😊\n\n"
                 "Percebi que você ainda não tem uma conta. "
                 "Vamos criar a sua? É rapidinho.\n\n"
                 "Qual é o seu nome?"
@@ -652,7 +661,7 @@ async def receber_mensagem(
 
                         resposta = (
                             f"🎉 Pronto, {usuario.nome}! "
-                            "Sua conta Monetra foi criada.\n\n"
+                            "Sua conta Prospere foi criada.\n\n"
                             "Agora pode falar comigo normalmente. "
                             "Por exemplo: *gastei 30 reais com gasolina* "
                             "ou *qual é meu saldo?* 💰"
@@ -760,6 +769,50 @@ async def receber_mensagem(
             "❌ Erro na camada de IA; usando fallback:",
             erro
         )
+
+
+    # =====================================================
+    # CORREÇÃO / EXCLUSÃO DE LANÇAMENTO
+    # =====================================================
+
+    correcao = identificar_correcao(
+        mensagem
+    )
+
+    if correcao:
+
+        try:
+
+            resposta = tratar_correcao(
+                usuario_id,
+                correcao
+            )
+
+        except Exception as erro:
+
+            print(
+                "❌ Erro ao corrigir lançamento:",
+                erro
+            )
+
+            resposta = (
+                "Não consegui alterar esse lançamento agora. "
+                "Tente novamente. 😊"
+            )
+
+        if numero_whatsapp:
+
+            await enviar_mensagem_whatsapp(
+                numero_whatsapp,
+                resposta,
+                phone_number_id
+            )
+
+        return {
+            "status": "ok",
+            "resposta": resposta,
+            "modo": "correcao"
+        }
 
 
     # =====================================================
@@ -969,7 +1022,7 @@ async def receber_mensagem(
         resposta = (
             "✅ Transação registrada!\n"
             f"💰 Valor: "
-            f"R$ {resultado['valor']:.2f}\n"
+            f"{formatar_moeda(resultado['valor'])}\n"
             f"📌 Tipo: "
             f"{resultado['tipo']}\n"
             f"📂 Categoria: "

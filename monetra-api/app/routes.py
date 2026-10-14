@@ -1,9 +1,15 @@
+from app.categorias import CATEGORIAS_PADRAO
 from app.security import gerar_hash, verificar_senha, criar_token, verificar_token
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app import models, schemas
+from app.whatsapp.consultas import (
+    buscar_transacoes,
+    editar_transacao,
+    excluir_transacao,
+)
 
 
 router = APIRouter()
@@ -61,6 +67,15 @@ def login(
     }
 
 
+@router.get("/categorias")
+def listar_categorias():
+    """Categorias padrão da Prospere."""
+
+    return {
+        "categorias": list(CATEGORIAS_PADRAO)
+    }
+
+
 @router.post("/transacoes", response_model=schemas.TransacaoResponse)
 def criar_transacao(
     transacao: schemas.TransacaoCreate,
@@ -80,6 +95,107 @@ def criar_transacao(
     db.refresh(nova_transacao)
 
     return nova_transacao
+
+
+@router.get(
+    "/transacoes",
+    response_model=list[schemas.TransacaoDetalhe]
+)
+def historico_transacoes(
+    termo: str | None = None,
+    categoria: str | None = None,
+    tipo: str | None = None,
+    periodo: str | None = None,
+    dias: int | None = None,
+    valor_min: float | None = None,
+    valor_max: float | None = None,
+    limite: int = 50,
+    usuario_id: int = Depends(verificar_token)
+):
+    """Histórico do usuário autenticado, com busca e filtros."""
+
+    return buscar_transacoes(
+        usuario_id,
+        termo=termo,
+        categoria=categoria,
+        tipo=tipo,
+        periodo=periodo,
+        dias=dias,
+        valor_min=valor_min,
+        valor_max=valor_max,
+        limite=max(1, min(int(limite), 200))
+    )
+
+
+@router.patch(
+    "/transacoes/{transacao_id}",
+    response_model=schemas.TransacaoDetalhe
+)
+def atualizar_transacao(
+    transacao_id: int,
+    alteracoes: schemas.TransacaoUpdate,
+    usuario_id: int = Depends(verificar_token)
+):
+    """Altera um lançamento do próprio usuário."""
+
+    dados = alteracoes.model_dump(
+        exclude_unset=True,
+        exclude_none=True
+    )
+
+    if not dados:
+        raise HTTPException(
+            status_code=400,
+            detail="Nenhum campo para alterar foi informado."
+        )
+
+    resultado = editar_transacao(
+        usuario_id,
+        transacao_id,
+        **dados
+    )
+
+    if not resultado["sucesso"]:
+
+        raise HTTPException(
+            status_code=(
+                404
+                if resultado.get("nao_encontrado")
+                else 400
+            ),
+            detail=resultado["erro"]
+        )
+
+    return resultado["transacao"]
+
+
+@router.delete("/transacoes/{transacao_id}")
+def remover_transacao(
+    transacao_id: int,
+    usuario_id: int = Depends(verificar_token)
+):
+    """Exclui um lançamento do próprio usuário."""
+
+    resultado = excluir_transacao(
+        usuario_id,
+        transacao_id
+    )
+
+    if not resultado["sucesso"]:
+
+        raise HTTPException(
+            status_code=(
+                404
+                if resultado.get("nao_encontrado")
+                else 400
+            ),
+            detail=resultado["erro"]
+        )
+
+    return {
+        "message": "Lançamento excluído.",
+        "transacao": resultado["transacao"]
+    }
 
 
 @router.get(

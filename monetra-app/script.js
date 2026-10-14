@@ -276,7 +276,7 @@ async function atualizarCategorias() {
                 transporte += valor;
             } else if (categoria === "alimentação" || categoria === "alimentacao") {
                 alimentacao += valor;
-            } else if (categoria === "casa") {
+            } else if (categoria === "casa" || categoria === "moradia") {
                 casa += valor;
             } else {
                 outros += valor;
